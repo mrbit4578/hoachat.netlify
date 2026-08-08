@@ -2,35 +2,45 @@
 
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
-import { redirect } from "next/navigation";
+import { useRouter } from "next/navigation";
 import ChemicalForm from "@/app/components/ChemicalForm";
 import { ChemicalProduct } from "@/app/types";
 
 export default function EditChemicalPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
+  const router = useRouter();
   const [chemical, setChemical] = useState<Partial<ChemicalProduct> | null>(null);
   const [loading, setLoading] = useState(true);
+  const [id, setId] = useState<string>("");
+
+  useEffect(() => {
+    // Async params unwrap
+    (async () => {
+      const { id: paramId } = await params;
+      setId(paramId);
+    })();
+  }, [params]);
 
   useEffect(() => {
     // Check authorization
-    if (!session) {
-      redirect("/auth/signin");
+    if (status === "unauthenticated") {
+      router.push("/auth/signin");
     }
-    if (session.user?.role === "viewer") {
-      redirect("/dashboard");
+    if (session?.user && (session.user as any).role === "viewer") {
+      router.push("/dashboard");
     }
 
-    fetchChemical();
-  }, [params.id, session]);
+    if (id) fetchChemical();
+  }, [id, session, status, router]);
 
   const fetchChemical = async () => {
     try {
       setLoading(true);
-      const res = await fetch(`/api/chemicals/${params.id}`);
+      const res = await fetch(`/api/chemicals/${id}`);
       const data = await res.json();
       if (data.success) {
         setChemical(data.data);

@@ -1,19 +1,25 @@
-import { auth } from "@/auth";
-import { redirect } from "next/navigation";
+"use client";
+
+import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 import ChemicalForm from "@/app/components/ChemicalForm";
 
-export default async function NewChemicalPage() {
-  const session = await auth();
+export default function NewChemicalPage() {
+  const { data: session, status } = useSession();
+  const router = useRouter();
 
-  // Check if user is authenticated
-  if (!session) {
-    redirect("/auth/signin");
-  }
+  useEffect(() => {
+    // Check if user is authenticated
+    if (status === "unauthenticated") {
+      router.push("/auth/signin");
+    }
 
-  // Check if user has permission to create
-  if (session.user?.role === "viewer") {
-    redirect("/dashboard");
-  }
+    // Check if user has permission to create
+    if (session?.user && (session.user as any).role === "viewer") {
+      router.push("/dashboard");
+    }
+  }, [session, status, router]);
 
   return (
     <div className="space-y-6">

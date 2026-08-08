@@ -1,8 +1,10 @@
-import Link from "next/link";
-import { auth } from "@/auth";
+"use client";
 
-export default async function Home() {
-  const session = await auth();
+import Link from "next/link";
+import { useSession } from "next-auth/react";
+
+export default function Home() {
+  const { data: session } = useSession();
 
   return (
     <div className="space-y-12">

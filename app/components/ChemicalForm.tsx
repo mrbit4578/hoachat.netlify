@@ -22,7 +22,7 @@ export default function ChemicalForm({ initialData, isEditing = false }: Chemica
     productCode: initialData?.productCode || "",
     manufacturer: initialData?.manufacturer || "",
     zdhcCertified: initialData?.zdhcCertified || false,
-    zdhcLevel: initialData?.zdhcLevel || "ZDHC Gateway",
+    zdhcLevel: (initialData?.zdhcLevel as "ZDHC Gateway" | "ZDHC Approved" | "ZDHC Audited") || "ZDHC Gateway",
     zdhcCertificateUrl: initialData?.zdhcCertificateUrl || "",
     zdhcCertificateExpiry: initialData?.zdhcCertificateExpiry
       ? new Date(initialData.zdhcCertificateExpiry).toISOString().split("T")[0]
@@ -53,7 +53,7 @@ export default function ChemicalForm({ initialData, isEditing = false }: Chemica
     try {
       const data = {
         ...formData,
-        zdhcCertified: formData.zdhcCertified === "on" || formData.zdhcCertified === true,
+        zdhcCertified: Boolean(formData.zdhcCertified),
         chemicalComposition: components.filter(c => c.componentName && c.casNumber),
         hazardousSubstances: [],
       };
@@ -187,9 +187,10 @@ export default function ChemicalForm({ initialData, isEditing = false }: Chemica
                 </label>
                 <select
                   value={formData.zdhcLevel}
-                  onChange={(e) =>
-                    setFormData({ ...formData, zdhcLevel: e.target.value })
-                  }
+                  onChange={(e) => {
+                    const value = e.target.value as "ZDHC Gateway" | "ZDHC Approved" | "ZDHC Audited";
+                    setFormData({ ...formData, zdhcLevel: value });
+                  }}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600"
                 >
                   <option value="ZDHC Gateway">ZDHC Gateway</option>

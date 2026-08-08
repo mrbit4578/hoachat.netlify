@@ -1,24 +1,19 @@
-import type { NextAuthConfig } from "next-auth";
+import type { NextAuthOptions } from "next-auth";
 import GitHub from "next-auth/providers/github";
-import { User } from "@/app/types";
+import type { JWT } from "next-auth/jwt";
+import type { Session } from "next-auth";
 
 /**
  * GitHub OAuth Provider Configuration
- * Users need to:
- * 1. Create GitHub OAuth App at https://github.com/settings/developers
- * 2. Set Authorization callback URL to: http://localhost:3000/api/auth/callback/github
- * 3. Copy Client ID and Client Secret to .env.local
  */
-const GITHUB_AUTHORIZED_USERS = process.env.GITHUB_AUTHORIZED_USERS?.split(',') || [];
-const GITHUB_ADMIN_USERS = process.env.GITHUB_ADMIN_USERS?.split(',') || [];
+const GITHUB_AUTHORIZED_USERS = (process.env.GITHUB_AUTHORIZED_USERS || "").split(',').filter(Boolean);
+const GITHUB_ADMIN_USERS = (process.env.GITHUB_ADMIN_USERS || "").split(',').filter(Boolean);
 
-export const authConfig = {
+export const authConfig: NextAuthOptions = {
   providers: [
     GitHub({
-      clientId: process.env.NEXT_PUBLIC_GITHUB_ID,
-      clientSecret: process.env.GITHUB_SECRET,
-      // Request additional scopes if needed
-      // scope: "user:email,read:user,read:org",
+      clientId: process.env.NEXT_PUBLIC_GITHUB_ID || "",
+      clientSecret: process.env.GITHUB_SECRET || "",
     }),
   ],
   pages: {
@@ -26,25 +21,7 @@ export const authConfig = {
     error: "/auth/error",
   },
   callbacks: {
-    authorized({ auth, request: { pathname } }) {
-      const isOnAdminPanel = pathname?.startsWith("/admin");
-      const isOnDashboard = pathname?.startsWith("/dashboard");
-      const isOnEditPage = pathname?.startsWith("/chemical/new") || pathname?.startsWith("/chemical/edit");
-      
-      // Only admin and editors can access admin and edit pages
-      if (isOnAdminPanel || isOnEditPage) {
-        return !!auth?.user;
-      }
-      
-      // Everyone can view dashboard
-      if (isOnDashboard) {
-        return true;
-      }
-      
-      return true;
-    },
-    
-    jwt({ token, user, profile }) {
+    jwt({ token, user, profile }: { token: JWT; user?: any; profile?: any }) {
       if (user) {
         token.id = user.id;
         token.email = user.email;
@@ -52,7 +29,7 @@ export const authConfig = {
         token.picture = user.image;
         
         // Set role based on GitHub username
-        const githubLogin = profile?.login as string || "";
+        const githubLogin = (profile?.login as string) || "";
         if (GITHUB_ADMIN_USERS.includes(githubLogin)) {
           token.role = "admin";
         } else if (GITHUB_AUTHORIZED_USERS.includes(githubLogin) || githubLogin) {
@@ -66,36 +43,36 @@ export const authConfig = {
       return token;
     },
     
-    session({ session, token }) {
+    session({ session, token }: { session: Session; token: JWT }) {
       if (session.user) {
-        session.user.id = token.id as string;
-        session.user.role = token.role as User["role"];
-        session.user.email = token.email as string;
-        session.user.name = token.name as string;
-        session.user.avatar = token.picture as string;
-        session.user.githubId = token.githubId as string;
+        (session.user as any).id = token.id as string;
+        (session.user as any).role = token.role as any;
+        (session.user as any).email = token.email as string;
+        (session.user as any).name = token.name as string;
+        (session.user as any).avatar = token.picture as string;
+        (session.user as any).githubId = token.githubId as string;
       }
       return session;
     },
   },
   events: {
-    async signIn({ user, profile }) {
-      console.log(`User signed in: ${user.email} via GitHub`);
+    async signIn({ user }: { user?: any }) {
+      console.log(`User signed in: ${user?.email} via GitHub`);
     },
     async signOut() {
       console.log("User signed out");
     },
   },
-} satisfies NextAuthConfig;
+};
 
 /**
  * Middleware to check user permissions
  */
-export function requireRole(requiredRole: User["role"]) {
-  return (userRole: User["role"]) => {
-    const roleHierarchy = { admin: 3, editor: 2, viewer: 1 };
-    const requiredLevel = roleHierarchy[requiredRole];
-    const userLevel = roleHierarchy[userRole];
+export function requireRole(requiredRole: string) {
+  return (userRole: string) => {
+    const roleHierarchy: Record<string, number> = { admin: 3, editor: 2, viewer: 1 };
+    const requiredLevel = roleHierarchy[requiredRole] || 0;
+    const userLevel = roleHierarchy[userRole] || 0;
     return userLevel >= requiredLevel;
   };
 }
@@ -103,7 +80,7 @@ export function requireRole(requiredRole: User["role"]) {
 /**
  * Get public user profile data (safe to expose)
  */
-export function getPublicUserData(user: User) {
+export function getPublicUserData(user: any) {
   return {
     id: user.id,
     name: user.name,
