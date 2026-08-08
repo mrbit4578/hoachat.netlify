@@ -8,20 +8,28 @@ import { ChemicalProduct } from "@/app/types";
 export default function ChemicalDetailPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
   const { data: session } = useSession();
   const [chemical, setChemical] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [id, setId] = useState<string>("");
 
   useEffect(() => {
-    fetchChemical();
-  }, [params.id]);
+    (async () => {
+      const { id: paramId } = await params;
+      setId(paramId);
+    })();
+  }, [params]);
+
+  useEffect(() => {
+    if (id) fetchChemical();
+  }, [id]);
 
   const fetchChemical = async () => {
     try {
       setLoading(true);
-      const res = await fetch(`/api/chemicals/${params.id}`);
+      const res = await fetch(`/api/chemicals/${id}`);
       const data = await res.json();
       if (data.success) {
         setChemical(data.data);
