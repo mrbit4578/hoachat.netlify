@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@/auth";
 import { validateZDHCCompliance } from "@/app/lib/zdhc";
 
 // Mock database
@@ -66,9 +67,22 @@ export async function PUT(
 ) {
   const { id } = await params;
   try {
-    // Note: In production, verify auth via middleware
-    // For now, accepting all authenticated requests
-    
+    // Server-side auth check: only editors/admins can update
+    const session = await auth();
+    if (!session?.user) {
+      return NextResponse.json(
+        { success: false, error: "Unauthorized: please sign in with GitHub" },
+        { status: 401 }
+      );
+    }
+    const role = (session.user as any).role || "viewer";
+    if (role === "viewer") {
+      return NextResponse.json(
+        { success: false, error: "Forbidden: viewers cannot update chemicals" },
+        { status: 403 }
+      );
+    }
+
     const chemical = chemicals.find(c => c.id === id);
     
     if (!chemical) {
@@ -120,6 +134,22 @@ export async function DELETE(
 ) {
   const { id } = await params;
   try {
+    // Server-side auth check: only admins can delete
+    const session = await auth();
+    if (!session?.user) {
+      return NextResponse.json(
+        { success: false, error: "Unauthorized: please sign in with GitHub" },
+        { status: 401 }
+      );
+    }
+    const role = (session.user as any).role || "viewer";
+    if (role !== "admin") {
+      return NextResponse.json(
+        { success: false, error: "Forbidden: only admins can delete chemicals" },
+        { status: 403 }
+      );
+    }
+
     const chemical = chemicals.find(c => c.id === id);
     
     if (!chemical) {

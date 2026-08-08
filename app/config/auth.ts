@@ -10,6 +10,7 @@ const GITHUB_AUTHORIZED_USERS = (process.env.GITHUB_AUTHORIZED_USERS || "").spli
 const GITHUB_ADMIN_USERS = (process.env.GITHUB_ADMIN_USERS || "").split(',').filter(Boolean);
 
 export const authConfig: NextAuthOptions = {
+  secret: process.env.NEXTAUTH_SECRET || process.env.AUTH_SECRET || "zdhc-demo-fallback-secret-change-me",
   providers: [
     GitHub({
       clientId: process.env.NEXT_PUBLIC_GITHUB_ID || "",

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@/auth";
 import { validateZDHCCompliance } from "@/app/lib/zdhc";
 
 // Mock database - in production, use Supabase
@@ -70,9 +71,22 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    // Note: For authentication in API routes, use middleware or headers
-    // NextAuth v5 requires middleware setup for server-side auth
-    
+    // Server-side auth check: only signed-in GitHub users (editor/admin) can create
+    const session = await auth();
+    if (!session?.user) {
+      return NextResponse.json(
+        { success: false, error: "Unauthorized: please sign in with GitHub" },
+        { status: 401 }
+      );
+    }
+    const role = (session.user as any).role || "viewer";
+    if (role === "viewer") {
+      return NextResponse.json(
+        { success: false, error: "Forbidden: viewers cannot create chemicals" },
+        { status: 403 }
+      );
+    }
+
     const body = await request.json();
     
     // Validate required fields
@@ -92,7 +106,7 @@ export async function POST(request: NextRequest) {
       ...body,
       createdAt: new Date(),
       updatedAt: new Date(),
-      createdBy: "user@example.com",
+      createdBy: session.user.email || "user@example.com",
       zdhcCertified: body.zdhcCertified || false,
       hazardousSubstances: body.hazardousSubstances || [],
     };
